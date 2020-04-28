@@ -2,7 +2,7 @@
 # - mesa modules
 from mesa import Agent, Model
 from mesa.time import RandomActivation
-from mesa.space import MultiGrid
+from mesa.space import MultiGrid, Grid
 from mesa.datacollection import DataCollector
 
 # matplotlib for plotting when testing
@@ -17,7 +17,7 @@ from dataPrep import iqr, mad, pause, speechrate
 
 
 # defining the agent class
-class Agent(Agent):
+class Agent(Agent, Grid):
 	# An agent-cass inheriting the properties of Agent
 	# define properties needed to specify an object of class Agent()
 	def __init__(self, unique_id, model):
@@ -32,15 +32,31 @@ class Agent(Agent):
 		#self.mad = 0
 		#self.pause = 0
 
-		# specify agent-properties
-		self.sociality = 0
-		self.alignment = 0
+		# specify activity-level
+		self.status = "Active"
 
-	# define function for moving around the environment
+		# specify agent-properties
+		self.interaction_n = 0
+		self.interaction_time = 0
+		self.conversation_time = 0
+		self.alignment = 0
+		self.sociality = 0
+
+	# define function for checking the environment and moving
 	def move(self):
 		possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
-		new_position = self.random.choice(possible_steps)
-		self.model.grid.move_agent(self, new_position)
+		for i in range(8):
+			new_step = self.model.grid.get_neighbors(pos = possible_steps[i], moore=True, include_center=False, radius = 1)
+			if len(new_step) > 1:
+				pass
+			else:
+				new_position = self.random.choice(possible_steps)
+				self.model.grid.move_agent(self, new_position)
+				if len(new_position) > 2:
+					new_position = self.random.choice(possible_steps)
+					self.model.grid.move_agent(self, new_position)
+			
+		#print(len(new_step))
 
     # defining functions for rule-based interaction
     # rule based on iqr
@@ -61,6 +77,11 @@ class Agent(Agent):
 		cellmates = self.model.grid.get_cell_list_contents([self.pos])
     	# specify other based on amount of agents in the cell
 		other = self.random.choice(cellmates)
+		other_overall = float(other.iqr + other.speechrate + other.mad + other.pause)
+		self_overall = float(self.iqr + self.speechrate + self.mad + self.pause)
+		print(other_overall)
+		print(self_overall)
+		print("self_ID " + str(self.unique_id))
 
         # interaction rule
 		if self.speechrate > other.speechrate:
@@ -69,11 +90,10 @@ class Agent(Agent):
 
     # define step function - what the agent does for each timestep
 	def step(self):
-		self.move()
+		if self.status == "Active":
+			self.move()
 		self.ruleOne()
 		self.ruleTwo()
-		# print("Current sociality {}".format(self.sociality))
-		# print("Current alignment {}".format(self.alignment))
 
 
 
@@ -118,8 +138,8 @@ class Model(Model):
 		self.datacollector.collect(self)
 		self.schedule.step()
 
-model = Model(50, 10, 10)
-for i in range(10):
+model = Model(2, 4, 4)
+for i in range(2):
 	model.step()
 
 data = model.datacollector.get_agent_vars_dataframe()
