@@ -1,0 +1,42 @@
+---
+title: "dataPrep"
+author: "Bertram Hojer"
+date: "4/27/2020"
+output: html_document
+---
+
+```{r}
+setwd("~Bertram/Desktop/folders/Uni/4th/SocCult-Exam")
+
+library(pacman)
+p_load(tidyverse)
+
+data <- read_csv("Ass4_data.csv", col_types = cols(ID = col_character()))
+
+data$npause[data$npause == 0] <- NA
+data$`speechrate (nsyll/dur)`[data$`speechrate (nsyll/dur)` == 0.0] <- NA
+
+d <- data %>% 
+  subset(Language == "dk") %>% 
+  mutate(pitchVariability = scale(log(Pitch_IQR)),
+         pitchMAD = scale(log(Pitch_MAD)),
+         pauseFreq = scale(log((Duration / npause))),
+         speechRate = scale(log(`speechrate (nsyll/dur)`))) %>%
+  select(ID, Diagnosis, pitchVariability, pitchMAD, pauseFreq, speechRate)
+
+d[is.na(d)] <- 0
+
+d_grouped_50 <- d %>% 
+  group_by(ID) %>%
+  summarise(Diagnosis = Diagnosis[1],
+            pitchVariability = mean(pitchVariability),
+            pitchMAD = mean(pitchMAD),
+            pauseFreq = mean(pauseFreq),
+            speechRate = mean(speechRate)) %>% 
+  slice(1:50)
+
+
+write_csv(d_grouped_50, "pitchScores.csv")
+
+```
+
