@@ -35,17 +35,19 @@ hist(d$speechRate, breaks = 15)
 
 d[is.na(d)] <- 0
 
-d_grouped_50 <- d %>% 
+d_grouped <- d %>% 
   group_by(ID) %>%
   summarise(Diagnosis = Diagnosis[1],
             pitchVariability = mean(pitchVariability),
             pitchMAD = mean(pitchMAD),
             pauseFreq = mean(pauseFreq),
-            speechRate = mean(speechRate)) %>% 
-  slice(1:50)
+            speechRate = mean(speechRate))
 
-
-write_csv(d_grouped_50, "pitchScores.csv")
+d_ASD <- d_grouped %>% slice(1:25)
+d_TD <- d_grouped %>% slice(43:67)
+d_TEST <- d_grouped %>% slice(26:42)
+new_d <- rbind(d_ASD, d_TD)
+write_csv(new_d, "pitchScores.csv")
 
 ```
 
@@ -58,6 +60,8 @@ d <- read_csv("data.csv")
 d$Diagnosis <- as.numeric(d$AgentID)
 d$Diagnosis <- ifelse(d$Diagnosis < 29, "ASD", "TD")
 
+iterWTF <- d
+
 # modeling conversation_time as predicted by diagnosis
 model_conv <- lm(conversation_time ~ Diagnosis, data = d)
 summary(model_conv)
@@ -66,8 +70,21 @@ summary(model_conv)
 model_interactions <- lm(interactions ~ Diagnosis, data = d)
 summary(model_interactions)
 
-model_steps <- lm(conversation_time ~ 1 + Diagnosis + Diagnosis:Step, data = d)
-summary(model_steps)
+# modeling interaction time
+model_interaction_time <- lm(interaction_time ~ Diagnosis, data = d)
+summary(model_interaction_time)
+
+iterWTF %>% 
+  subset(Step == "499") %>% 
+  group_by(Diagnosis) %>% 
+  summarize(mean_interaction = mean(interactions),
+            mean_interaction_time = mean(interaction_time),
+            change_iqr = mean(change_IQR),
+            mean_activity = mean(activity))
+
+# modeling change IQR
+model_iqr <- lm(change_IQR ~ Diagnosis, data = d)
+summary(model_iqr)
 ```
 
 

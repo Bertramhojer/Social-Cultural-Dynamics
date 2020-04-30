@@ -37,15 +37,17 @@ class Agent(Agent):
 
 		# specify agent-properties
 		self.unique_interactions = 0
-		self.interaction_time = 0
+		self.interaction_time = 0.001
 		self.conversation_time = 0
 		self.change_iqr = 0
 		self.change_mad = 0
 		self.change_speechrate = 0
 		self.change_pause = 0
+		self.social_sync = 0
+		self.activity = 0
 
 	
-	def move(self):
+	def move_normal(self):
 		# examine environment
 		possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
 		# choose random cells in neighbor grid
@@ -57,7 +59,32 @@ class Agent(Agent):
 		cell_info = self.model.grid.get_cell_list_contents([self.pos])
 
 		# if the cell contains more than 2 agents already, repeat the movement
-		while len(cell_info) > 1:
+		while len(cell_info) > 2:
+			# examine environment
+			possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
+			# choose random cell in new neighbor grid
+			new_position = self.random.choice(possible_steps)
+			# get new grid info to avoid infinite recursion
+			cell_info = self.model.grid.get_cell_list_contents([self.pos])
+			# move the agent
+			self.model.grid.move_agent(self, new_position)
+
+
+
+	# define skeptical move-function
+	def move_skeptical(self):
+		# examine environment
+		possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
+		# choose random cells in neighbor grid
+		new_position = self.random.choice(possible_steps)
+		# move agent to new cell
+		self.model.grid.move_agent(self, new_position)
+
+		# get cell-contents
+		cell_info = self.model.grid.get_cell_list_contents([self.pos])
+
+		# if the cell contains more than 2 agents already, repeat the movement
+		while len(cell_info) == 2:
 			# examine environment
 			possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
 			# choose random cell in new neighbor grid
@@ -74,6 +101,14 @@ class Agent(Agent):
 
 		cell = self.model.grid.get_cell_list_contents([self.pos])
 		
+		movement_prob = ((0.2 * (1 - self.iqr)) +
+						(0.2 * (1 - self.mad)) +
+						(0.2 * self.speechrate) +
+						(0.2 * (1 - self.pause)) +
+						(0.2 * (self.conversation_time / self.interaction_time)))
+
+		#print(movement_prob)
+
 		if len(cell) == 2:
 			other = self.random.choice(cell)
 			while other == self:
@@ -84,21 +119,22 @@ class Agent(Agent):
 			rulebook.interaction_time(self, other)
 			rulebook.conversation_time(self, other)
 			
-			rulebook.similarity_check(agent = self, other = other)
-
-			#print(other.iqr)
-			#print(self.iqr)
+			rulebook.similarity_check(self, other)
 
 		elif len(cell) != 2:
-			rulebook.explore(self)
+			rulebook.explore(self, movement_prob)
 
 
 		if self.status == "Active":
-			self.move()
+			self.activity += 1
+			if movement_prob < float(random.random()):
+				self.move_skeptical()
+			else:
+				self.move_normal()
 
 
 
-# defining the agent class
+# defining the model class
 class Model(Model):
 	# a model-class inheriting the properties of 'Model'
 	def __init__(self, N, width, height):
@@ -117,6 +153,8 @@ class Model(Model):
 			agent.mad = float(mad.iloc[i])
 			agent.pause = float(pause.iloc[i])
 
+			agent.symptom_severity = (agent.iqr + agent.mad + (1 - agent.speechrate) + agent.pause) / 4
+
         	# add the agent to the model schedule
 			self.schedule.add(agent)
 
@@ -133,22 +171,27 @@ class Model(Model):
 									"change_IQR": "change_iqr",
 									"change_MAD": "change_mad",
 									"change_Speechrate": "change_speechrate",
-									"change_PauseFreq": "change_pause"})
+									"change_PauseFreq": "change_pause",
+									"social_sync": "social_sync",
+									"activity": "activity"})
+
+			self.running = True
 
 	def step(self):
 		# advance the model and collect data
 		self.datacollector.collect(self)
 		self.schedule.step()
 
-model = Model(50, 10, 10)
-for i in range(200):
+"""
+model = Model(50, 16, 16)
+for i in range(100):
 	model.step()
-	print("Step: {}/199".format(i))
+	print("Step: {}/499".format(i))
 
 data = model.datacollector.get_agent_vars_dataframe()
 data.to_csv("data.csv")
-print("CSV written")
-
+#print("CSV written")
+"""
 
 
 

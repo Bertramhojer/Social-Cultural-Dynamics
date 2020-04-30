@@ -25,33 +25,28 @@ def similarity_check(agent, other):
     pause_diff = np.absolute(agent.pause - other.pause)
 
     # probability of moving
-    movement_prob = ((0.125 * agent.iqr + 0.125 * iqr_diff) + 
-                    (0.125 * agent.mad + 0.125 * mad_diff) +
-                    (0.125 * (1 - agent.speechrate) + 0.125 * speechrate_diff) +
-                    (0.125 * agent.pause + 0.125 * pause_diff))
+    movement_prob = ((0.12 * agent.iqr + 0.08 * iqr_diff) + 
+                    (0.12 * agent.mad + 0.08 * mad_diff) +
+                    (0.12 * (1 - agent.speechrate) + 0.08 * speechrate_diff) +
+                    (0.12 * agent.pause + 0.08 * pause_diff))
 
     rand_n = float(random.random())
     if movement_prob > rand_n:
         agent.status = "Active"
     else:
         agent.status = "Inactive"
-    #print(agent.status)
-    #print(movement_prob)
+
 
 
 # If alone on a cell, set status to active with probability based on pitch-scores
-def explore(agent):
-    # probability of moving
-    movement_prob = ((0.25 * (1 - agent.iqr)) + 
-                    (0.25 * (1 - agent.mad)) +
-                    (0.25 * agent.speechrate) +
-                    (0.25 * (1 - agent.pause)))
-
+def explore(agent, movement_prob):
+    # setting status based on movement_prob as defined in the step-function()
     rand_n = float(random.random())
     if movement_prob > rand_n:
         agent.status = "Active"
     else:
         agent.status = "Inactive"
+
 
 
 # Counting the amount of time an agent has interacted
@@ -63,10 +58,12 @@ def interaction_time(agent, other):
             agent.unique_interactions += 1
 
 
+
 # Counting conversation time
 def conversation_time(agent, other):
     # calculating the ratio between agents pause frequency
     agent.conversation_time += agent.pause / (agent.pause + other.pause)
+
 
 
 # Linguistic alignment
@@ -76,6 +73,8 @@ def linguistic_alignment(agent, other):
                     (0.1 * (1 - agent.mad)) +
                     (0.1 * agent.speechrate) +
                     (0.1 * (1 - agent.pause)))
+
+    agent.social_sync += social_sync
 
     # calculate the difference between agents
     iqr_diff = agent.iqr - other.iqr
@@ -88,12 +87,6 @@ def linguistic_alignment(agent, other):
     agent.change_mad += (social_sync * (-1 * (math.pow(mad_diff, 2) + 1))) * mad_diff
     agent.change_speechrate += (social_sync * (-1 * (math.pow(speechrate_diff, 2) + 1))) * speechrate_diff
     agent.change_pause += (social_sync * (-1 * (math.pow(pause_diff, 2) + 1))) * pause_diff
-
-
-
-# 
-
-
 
 
 
