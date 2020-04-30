@@ -46,7 +46,7 @@ class Agent(Agent):
 		self.social_sync = 0
 		self.activity = 0
 
-	
+
 	def move_normal(self):
 		# examine environment
 		possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
@@ -64,10 +64,11 @@ class Agent(Agent):
 			possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
 			# choose random cell in new neighbor grid
 			new_position = self.random.choice(possible_steps)
-			# get new grid info to avoid infinite recursion
-			cell_info = self.model.grid.get_cell_list_contents([self.pos])
 			# move the agent
 			self.model.grid.move_agent(self, new_position)
+			# get new grid info to avoid infinite recursion
+			cell_info = self.model.grid.get_cell_list_contents([self.pos])
+
 
 
 
@@ -84,15 +85,15 @@ class Agent(Agent):
 		cell_info = self.model.grid.get_cell_list_contents([self.pos])
 
 		# if the cell contains more than 2 agents already, repeat the movement
-		while len(cell_info) == 2:
+		while not len(cell_info) == 1:
 			# examine environment
 			possible_steps = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
 			# choose random cell in new neighbor grid
 			new_position = self.random.choice(possible_steps)
-			# get new grid info to avoid infinite recursion
-			cell_info = self.model.grid.get_cell_list_contents([self.pos])
 			# move the agent
 			self.model.grid.move_agent(self, new_position)
+			# get new grid info to avoid infinite recursion
+			cell_info = self.model.grid.get_cell_list_contents([self.pos])
 
 
 
@@ -100,7 +101,7 @@ class Agent(Agent):
 	def step(self):
 
 		cell = self.model.grid.get_cell_list_contents([self.pos])
-		
+
 		movement_prob = ((0.2 * (1 - self.iqr)) +
 						(0.2 * (1 - self.mad)) +
 						(0.2 * self.speechrate) +
@@ -133,6 +134,11 @@ class Agent(Agent):
 
 
 
+
+		print(len(cell))
+
+
+
 # defining the model class
 class Model(Model):
 	# a model-class inheriting the properties of 'Model'
@@ -141,6 +147,7 @@ class Model(Model):
 		self.grid = MultiGrid(width, height, True)
 		self.schedule = RandomActivation(self)
 		self.steps = 0
+		self.encounters = 0
 
         # creating agents by iterating through n_agents
 		for i in range(self.agents):
@@ -173,7 +180,8 @@ class Model(Model):
 									"change_Speechrate": "change_speechrate",
 									"change_PauseFreq": "change_pause",
 									"social_sync": "social_sync",
-									"activity": "activity"})
+									"activity": "activity"},
+				model_reporters = {"encounters": "encounters"})
 
 			self.running = True
 
@@ -188,11 +196,11 @@ model = Model(50, 16, 16)
 for i in range(100):
 	model.step()
 	print("Step: {}/499".format(i))
-
-data = model.datacollector.get_agent_vars_dataframe()
-data.to_csv("data.csv")
-#print("CSV written")
 """
+#data = model.datacollector.get_agent_vars_dataframe()
+#data.to_csv("data.csv")
+#print("CSV written")
+
 
 
 

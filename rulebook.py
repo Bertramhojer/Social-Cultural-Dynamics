@@ -35,7 +35,6 @@ def similarity_check(agent, other):
         agent.status = "Inactive"
 
 
-
 # If alone on a cell, set status to active with probability based on pitch-scores
 def explore(agent, movement_prob):
     # setting status based on movement_prob as defined in the step-function()
@@ -44,7 +43,6 @@ def explore(agent, movement_prob):
         agent.status = "Active"
     else:
         agent.status = "Inactive"
-
 
 
 # Counting the amount of time an agent has interacted
@@ -56,12 +54,10 @@ def interaction_time(agent, other):
             agent.unique_interactions += 1
 
 
-
 # Counting conversation time
 def conversation_time(agent, other):
     # calculating the ratio between agents pause frequency
     agent.conversation_time += agent.pause / (agent.pause + other.pause)
-
 
 
 # Linguistic alignment
