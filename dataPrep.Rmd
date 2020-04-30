@@ -9,7 +9,7 @@ editor_options:
 
 ```{r}
 library(pacman)
-p_load(tidyverse)
+p_load(tidyverse, lme4)
 
 data <- read_csv("Ass4_data.csv", col_types = cols(ID = col_character()))
 
@@ -48,4 +48,28 @@ d_grouped_50 <- d %>%
 write_csv(d_grouped_50, "pitchScores.csv")
 
 ```
+
+
+```{r}
+setwd("/Users/bertram/Desktop/folders/Uni/4th/SocCult-Exam/ABM/Social-Cultural-Dynamics")
+
+d <- read_csv("data.csv")
+
+d$Diagnosis <- as.numeric(d$AgentID)
+d$Diagnosis <- ifelse(d$Diagnosis < 29, "ASD", "TD")
+
+# modeling conversation_time as predicted by diagnosis
+model_conv <- lm(conversation_time ~ Diagnosis, data = d)
+summary(model_conv)
+
+# modeling n interactions as predicted by diagnosis
+model_interactions <- lm(interactions ~ Diagnosis, data = d)
+summary(model_interactions)
+
+model_steps <- lm(conversation_time ~ 1 + Diagnosis + Diagnosis:Step, data = d)
+summary(model_steps)
+```
+
+
+
 

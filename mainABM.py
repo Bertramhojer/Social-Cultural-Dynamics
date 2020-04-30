@@ -17,6 +17,7 @@ import numpy as np
 # import dataset
 from dataPrep import iqr, mad, pause, speechrate
 
+# import interaction rules
 import rulebook
 
 
@@ -38,8 +39,10 @@ class Agent(Agent):
 		self.unique_interactions = 0
 		self.interaction_time = 0
 		self.conversation_time = 0
-		self.alignment = 0
-		self.sociality = 0
+		self.change_iqr = 0
+		self.change_mad = 0
+		self.change_speechrate = 0
+		self.change_pause = 0
 
 	
 	def move(self):
@@ -76,17 +79,19 @@ class Agent(Agent):
 			while other == self:
 				other = self.random.choice(cell)
 				
+			rulebook.linguistic_alignment(self, other)
 
-			rulebook.interaction_time(self, other = other)
-			rulebook.conversation_time(self, other = other)
+			rulebook.interaction_time(self, other)
+			rulebook.conversation_time(self, other)
 			
 			rulebook.similarity_check(agent = self, other = other)
 
-			print(other.iqr)
-			print(self.iqr)
+			#print(other.iqr)
+			#print(self.iqr)
 
 		elif len(cell) != 2:
 			rulebook.explore(self)
+
 
 		if self.status == "Active":
 			self.move()
@@ -124,7 +129,11 @@ class Model(Model):
 			self.datacollector = DataCollector(
 				agent_reporters = {"interactions": "unique_interactions",
 									"interaction_time": "interaction_time",
-									"conversation_time": "conversation_time"})
+									"conversation_time": "conversation_time",
+									"change_IQR": "change_iqr",
+									"change_MAD": "change_mad",
+									"change_Speechrate": "change_speechrate",
+									"change_PauseFreq": "change_pause"})
 
 	def step(self):
 		# advance the model and collect data
@@ -132,8 +141,9 @@ class Model(Model):
 		self.schedule.step()
 
 model = Model(50, 10, 10)
-for i in range(50):
+for i in range(200):
 	model.step()
+	print("Step: {}/199".format(i))
 
 data = model.datacollector.get_agent_vars_dataframe()
 data.to_csv("data.csv")

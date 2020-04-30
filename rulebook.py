@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 # for creating binomial distributions aiding decision-making
 from scipy.stats import binom
+import math
 
 
 
@@ -41,10 +42,10 @@ def similarity_check(agent, other):
 # If alone on a cell, set status to active with probability based on pitch-scores
 def explore(agent):
     # probability of moving
-    movement_prob = ((0.125 * (1 - agent.iqr)) + 
-                    (0.125 * (1 - agent.mad)) +
-                    (0.125 * agent.speechrate) +
-                    (0.125 * (1 - agent.pause)))
+    movement_prob = ((0.25 * (1 - agent.iqr)) + 
+                    (0.25 * (1 - agent.mad)) +
+                    (0.25 * agent.speechrate) +
+                    (0.25 * (1 - agent.pause)))
 
     rand_n = float(random.random())
     if movement_prob > rand_n:
@@ -65,12 +66,34 @@ def interaction_time(agent, other):
 # Counting conversation time
 def conversation_time(agent, other):
     # calculating the ratio between agents pause frequency
-    if agent.pause > other.pause:
-        # estimating conversation time
-        pause_ratio = (agent.pause / other.pause)
-        agent.conversation_time += 1 - (1 / pause_ratio)
-    elif agent.pause < other.pause:
-        # estimating conversation time
-        pause_ratio = (other.pause / agent.pause)
-        agent.conversation_time += (1 / pause_ratio)
+    agent.conversation_time += agent.pause / (agent.pause + other.pause)
+
+
+# Linguistic alignment
+def linguistic_alignment(agent, other):
+    # calculate social synchronisation score based on pitch scores
+    social_sync = ((0.1 * (1 - agent.iqr)) + 
+                    (0.1 * (1 - agent.mad)) +
+                    (0.1 * agent.speechrate) +
+                    (0.1 * (1 - agent.pause)))
+
+    # calculate the difference between agents
+    iqr_diff = agent.iqr - other.iqr
+    mad_diff = agent.mad - other.mad
+    speechrate_diff = agent.speechrate - other.speechrate
+    pause_diff = agent.pause - other.pause
+
+    # modulate based on second degree polynomium
+    agent.change_iqr += (social_sync * (-1 * (math.pow(iqr_diff, 2) + 1))) * iqr_diff
+    agent.change_mad += (social_sync * (-1 * (math.pow(mad_diff, 2) + 1))) * mad_diff
+    agent.change_speechrate += (social_sync * (-1 * (math.pow(speechrate_diff, 2) + 1))) * speechrate_diff
+    agent.change_pause += (social_sync * (-1 * (math.pow(pause_diff, 2) + 1))) * pause_diff
+
+
+
+# 
+
+
+
+
 
