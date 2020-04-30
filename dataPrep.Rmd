@@ -58,7 +58,7 @@ setwd("/Users/bertram/Desktop/folders/Uni/4th/SocCult-Exam/ABM/Social-Cultural-D
 d <- read_csv("data.csv")
 
 d$Diagnosis <- as.numeric(d$AgentID)
-d$Diagnosis <- ifelse(d$Diagnosis < 29, "ASD", "TD")
+d$Diagnosis <- ifelse(d$Diagnosis < 25, "ASD", "TD")
 
 iterWTF <- d
 
@@ -74,7 +74,7 @@ summary(model_interactions)
 model_interaction_time <- lm(interaction_time ~ Diagnosis, data = d)
 summary(model_interaction_time)
 
-iterWTF %>% 
+d %>% 
   subset(Step == "499") %>% 
   group_by(Diagnosis) %>% 
   summarize(mean_interaction = mean(interactions),

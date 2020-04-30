@@ -11,8 +11,6 @@ import random
 import pandas as pd
 # data handling
 import numpy as np
-# for creating binomial distributions aiding decision-making
-from scipy.stats import binom
 import math
 
 
@@ -25,13 +23,13 @@ def similarity_check(agent, other):
     pause_diff = np.absolute(agent.pause - other.pause)
 
     # probability of moving
-    movement_prob = ((0.12 * agent.iqr + 0.08 * iqr_diff) + 
+    activation_prob = ((0.12 * agent.iqr + 0.08 * iqr_diff) + 
                     (0.12 * agent.mad + 0.08 * mad_diff) +
                     (0.12 * (1 - agent.speechrate) + 0.08 * speechrate_diff) +
                     (0.12 * agent.pause + 0.08 * pause_diff))
 
     rand_n = float(random.random())
-    if movement_prob > rand_n:
+    if activation_prob > rand_n:
         agent.status = "Active"
     else:
         agent.status = "Inactive"

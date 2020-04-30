@@ -107,7 +107,6 @@ class Agent(Agent):
 						(0.2 * (1 - self.pause)) +
 						(0.2 * (self.conversation_time / self.interaction_time)))
 
-		#print(movement_prob)
 
 		if len(cell) == 2:
 			other = self.random.choice(cell)
@@ -141,6 +140,7 @@ class Model(Model):
 		self.agents = N
 		self.grid = MultiGrid(width, height, True)
 		self.schedule = RandomActivation(self)
+		self.steps = 0
 
         # creating agents by iterating through n_agents
 		for i in range(self.agents):
@@ -181,6 +181,7 @@ class Model(Model):
 		# advance the model and collect data
 		self.datacollector.collect(self)
 		self.schedule.step()
+		self.steps += 1
 
 """
 model = Model(50, 16, 16)
