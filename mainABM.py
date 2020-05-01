@@ -121,8 +121,10 @@ class Agent(Agent):
 			
 			rulebook.similarity_check(self, other)
 
+
 		elif len(cell) != 2:
 			rulebook.explore(self, movement_prob)
+
 
 
 		if self.status == "Active":
@@ -135,7 +137,7 @@ class Agent(Agent):
 
 
 
-		print(len(cell))
+		#print(len(cell))
 
 
 
@@ -146,8 +148,10 @@ class Model(Model):
 		self.agents = N
 		self.grid = MultiGrid(width, height, True)
 		self.schedule = RandomActivation(self)
+		self.running = True
 		self.steps = 0
 		self.encounters = 0
+		self.mean_encounters = 0
 
         # creating agents by iterating through n_agents
 		for i in range(self.agents):
@@ -180,16 +184,18 @@ class Model(Model):
 									"change_Speechrate": "change_speechrate",
 									"change_PauseFreq": "change_pause",
 									"social_sync": "social_sync",
-									"activity": "activity"},
-				model_reporters = {"encounters": "encounters"})
+									"activity": "activity"})
 
-			self.running = True
 
 	def step(self):
 		# advance the model and collect data
 		self.datacollector.collect(self)
 		self.schedule.step()
+		self.encounters = 0
+		for agent in self.schedule.agents:
+			self.encounters += (agent.unique_interactions)
 		self.steps += 1
+		self.mean_encounters = round(float(self.encounters / self.steps), 3)
 
 """
 model = Model(50, 16, 16)
