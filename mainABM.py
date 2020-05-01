@@ -184,7 +184,8 @@ class Model(Model):
 									"change_Speechrate": "change_speechrate",
 									"change_PauseFreq": "change_pause",
 									"social_sync": "social_sync",
-									"activity": "activity"})
+									"activity": "activity"},
+				model_reporters = {"Encounters" : "encounters"})
 
 
 	def step(self):
@@ -193,7 +194,8 @@ class Model(Model):
 		self.schedule.step()
 		self.encounters = 0
 		for agent in self.schedule.agents:
-			self.encounters += (agent.unique_interactions)
+			self.encounters += agent.unique_interactions
+		self.encounters = int(self.encounters / 2)
 		self.steps += 1
 		self.mean_encounters = round(float(self.encounters / self.steps), 3)
 
@@ -202,12 +204,12 @@ model = Model(50, 16, 16)
 for i in range(100):
 	model.step()
 	print("Step: {}/499".format(i))
+
+data = model.datacollector.get_agent_vars_dataframe()
+data.to_csv("data.csv")
+print("CSV written")
+
 """
-#data = model.datacollector.get_agent_vars_dataframe()
-#data.to_csv("data.csv")
-#print("CSV written")
-
-
 
 
 

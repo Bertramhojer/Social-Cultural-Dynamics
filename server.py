@@ -1,6 +1,7 @@
 from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.modules import ChartModule, TextElement
+from mesa.visualization.UserParam import UserSettableParameter
 
 from mainABM import *
 
@@ -20,7 +21,7 @@ class CountElement(TextElement):
 		pass
 
 	def render(self, model):
-		return "Encounters: " + str(model.encounters)
+		return "Overall Unique Interactions: " + str(model.encounters)
 
 
 class MeanCountElement(TextElement):
@@ -37,6 +38,13 @@ encounters = CountElement()
 mean_encounters = MeanCountElement()
 # set steps equal to the specified class
 steps = StepElement()
+
+
+
+chart = ChartModule([{"Label": "Encounters",
+					"Color": "blue"}],
+					data_collector_name = 'datacollector')
+
 
 # define function for specifying agent-representation
 def agent_portrayal(agent):
@@ -91,14 +99,15 @@ def agent_portrayal(agent):
 	return portrayal
 
 
+
 # specify the grid with dimensions equal to model-dimensions
 grid = CanvasGrid(agent_portrayal, 16, 16, 500, 500)
 
 # specify server-value of class ModularServer (MESA)
 server = ModularServer(Model,
-                       [grid, steps, encounters, mean_encounters],
+                       [grid, steps, encounters, mean_encounters, chart],
                        "Social Interaction Model",
-                       {"N":50, "width":16, "height":16})
+                       {"N": 50, "width": 16, "height": 16})
 server.port = 8522 # The default
 
 # run the server using the server-class' 'launch' function
