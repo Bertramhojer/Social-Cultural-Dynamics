@@ -16,7 +16,7 @@ import numpy as np
 
 # import dataset
 from dataPrep import iqr, mad, pause, speechrate
-
+ 
 # import interaction rules
 import rulebook
 
@@ -102,11 +102,11 @@ class Agent(Agent):
 
 		cell = self.model.grid.get_cell_list_contents([self.pos])
 
-		movement_prob = ((0.2 * (1 - self.iqr)) +
-						(0.2 * (1 - self.mad)) +
-						(0.2 * self.speechrate) +
-						(0.2 * (1 - self.pause)) +
-						(0.2 * (self.conversation_time / self.interaction_time)))
+		movement_prob = ((0.15 * (1 - self.iqr)) +
+						(0.4 * (1 - self.mad)) +
+						(0.15 * self.speechrate) +
+						(0.15 * (1 - self.pause)) +
+						(0.15 * (self.conversation_time / self.interaction_time)))
 
 
 		if len(cell) == 2:
@@ -133,12 +133,6 @@ class Agent(Agent):
 				self.move_skeptical()
 			else:
 				self.move_normal()
-
-
-
-
-		#print(len(cell))
-
 
 
 # defining the model class
