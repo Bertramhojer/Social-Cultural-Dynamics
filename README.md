@@ -10,6 +10,7 @@ This repository contains 5 different scripts;
 
 * server.py
 
+# Script Contents
 Each script has a different use-case;
 
 'dataPrep.py' is very short and quite simply used to load the pitch-scores from a csv and creating a 1-D pandas dataframe for each measure.
