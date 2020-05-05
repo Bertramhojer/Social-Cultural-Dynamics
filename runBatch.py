@@ -19,9 +19,12 @@ batch_run = BatchRunner(Model,
 									"change_PauseFreq": "change_pause",
 									"social_sync": "social_sync",
 									"activity": "activity",
-									"IQR": "iqr"})
+									"IQR": "iqr",
+									"speechrate": "speechrate",
+									"pauseFreq": "pause",
+									"mad": "mad"})
 
 batch_run.run_all()
 
-#batch_data = batch_run.get_agent_vars_dataframe()
-#batch_data.to_csv("batch_data.csv")
+batch_data = batch_run.get_agent_vars_dataframe()
+batch_data.to_csv("batch_data.csv")

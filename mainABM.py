@@ -194,10 +194,12 @@ class Model(Model):
 		self.mean_encounters = round(float(self.encounters / self.steps), 3)
 
 """
+
 model = Model(50, 16, 16)
 for i in range(100):
 	model.step()
-	print("Step: {}/499".format(i))
+	print("Step: {}/99".format(i))
+
 
 data = model.datacollector.get_agent_vars_dataframe()
 data.to_csv("data.csv")

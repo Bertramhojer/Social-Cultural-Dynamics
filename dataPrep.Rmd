@@ -9,7 +9,7 @@ editor_options:
 
 ```{r}
 library(pacman)
-p_load(tidyverse, lme4)
+p_load(tidyverse, lmerTest)
 
 data <- read_csv("Ass4_data.csv", col_types = cols(ID = col_character()))
 
@@ -52,6 +52,8 @@ write_csv(new_d, "pitchScores.csv")
 ```
 
 
+# Examining data from single model-run of 500 steps
+
 ```{r}
 setwd("/Users/bertram/Desktop/folders/Uni/4th/SocCult-Exam/ABM/Social-Cultural-Dynamics")
 
@@ -88,5 +90,27 @@ summary(model_iqr)
 ```
 
 
+# Examining data from batch_run
+```{r}
+batch_data <- read_csv("batch_data.csv")
+
+batch_data$Diagnosis <- as.numeric(batch_data$AgentId)
+batch_data$Diagnosis <- ifelse(batch_data$Diagnosis < 25, "ASD", "TD")
+
+batch_d <- batch_data %>% 
+  group_by(AgentId) %>% 
+  summarize(mean_interaction = mean(interactions),
+            mean_interaction_time = mean(interaction_time),
+            change_iqr = mean(change_IQR),
+            mean_activity = mean(activity),
+            mean_conversation_time = mean(conversation_time),
+            Diagnosis = Diagnosis[1])
+
+batch_model <- lmer(interaction_time ~ Diagnosis + (1 | AgentId), data = batch_data)
+summary(batch_model)
+
+
+
+```
 
 
