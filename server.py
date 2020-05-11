@@ -107,8 +107,8 @@ grid = CanvasGrid(agent_portrayal, 16, 16, 500, 500)
 server = ModularServer(Model,
                        [grid, steps, encounters, mean_encounters, chart],
                        "Social Interaction Model",
-                       {"N": 50, "width": 16, "height": 16})
-server.port = 8522 # The default
+                       {"N": 67, "width": 16, "height": 16})
+server.port = 8521 # The default
 
 # run the server using the server-class' 'launch' function
 server.launch()

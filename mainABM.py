@@ -15,7 +15,7 @@ import pandas as pd
 import numpy as np
 
 # import dataset
-from dataPrep import iqr, mad, pause, speechrate
+from dataPrep import iqr, mad, pause, speechrate, diagnosis
  
 # import interaction rules
 import rulebook
@@ -43,7 +43,10 @@ class Agent(Agent):
 		self.change_mad = 0
 		self.change_speechrate = 0
 		self.change_pause = 0
-		self.social_sync = 0
+		self.abs_change_iqr = 0
+		self.abs_change_mad = 0
+		self.abs_change_speechrate = 0
+		self.abs_change_pause = 0
 		self.activity = 0
 
 
@@ -105,8 +108,7 @@ class Agent(Agent):
 		movement_prob = ((0.15 * (1 - self.iqr)) +
 						(0.4 * (1 - self.mad)) +
 						(0.15 * self.speechrate) +
-						(0.15 * (1 - self.pause)) +
-						(0.15 * (self.conversation_time / self.interaction_time)))
+						(0.15 * (1 - self.pause)))
 
 
 		if len(cell) == 2:
@@ -151,12 +153,12 @@ class Model(Model):
 		for i in range(self.agents):
         	# specify an agent as an object of class 'Agent' with unique_ID 'i'
 			agent = Agent(i, self)
-
         	# specify pitch measures for the agent as type 'float'
 			agent.iqr = float(iqr.iloc[i])
 			agent.speechrate = float(speechrate.iloc[i])
 			agent.mad = float(mad.iloc[i])
 			agent.pause = float(pause.iloc[i])
+			agent.diagnosis = float(diagnosis.iloc[i])
 
 			agent.symptom_severity = (agent.iqr + agent.mad + (1 - agent.speechrate) + agent.pause) / 4
 
@@ -177,8 +179,12 @@ class Model(Model):
 									"change_MAD": "change_mad",
 									"change_Speechrate": "change_speechrate",
 									"change_PauseFreq": "change_pause",
-									"social_sync": "social_sync",
-									"activity": "activity"},
+									"abs_change_IQR": "abs_change_iqr",
+									"abs_change_MAD": "abs_change_mad",
+									"abs_change_Speechrate": "abs_change_speechrate",
+									"abs_change_PauseFreq": "abs_change_pause",
+									"activity": "activity",
+									"diagnosis": "diagnosis"},
 				model_reporters = {"Encounters" : "encounters"})
 
 
@@ -194,17 +200,15 @@ class Model(Model):
 		self.mean_encounters = round(float(self.encounters / self.steps), 3)
 
 """
-
 model = Model(50, 16, 16)
 for i in range(100):
 	model.step()
-	print("Step: {}/99".format(i))
+	#print("Step: {}/99".format(i))
 
 
 data = model.datacollector.get_agent_vars_dataframe()
 data.to_csv("data.csv")
 print("CSV written")
-
 """
 
 

@@ -22,11 +22,19 @@ def similarity_check(agent, other):
     speechrate_diff = np.absolute(agent.speechrate - other.speechrate)
     pause_diff = np.absolute(agent.pause - other.pause)
 
+
+    diff = (iqr_diff + mad_diff + speechrate_diff + pause_diff) / 4
+    # self weight
+    self_weight = 0.4 * diff + 0.03
+    # diff weight
+    diff_weight = agent.symptom_severity * diff + 0.03
+
+
     # probability of moving
-    activation_prob = ((0.12 * agent.iqr + 0.08 * iqr_diff) + 
-                    (0.12 * agent.mad + 0.08 * mad_diff) +
-                    (0.12 * (1 - agent.speechrate) + 0.08 * speechrate_diff) +
-                    (0.12 * agent.pause + 0.08 * pause_diff))
+    activation_prob = ((self_weight * agent.iqr + diff_weight * iqr_diff) + 
+                    (self_weight * agent.mad + diff_weight * mad_diff) +
+                    (self_weight * (1 - agent.speechrate) + diff_weight * speechrate_diff) +
+                    (self_weight * agent.pause + diff_weight * pause_diff))
 
     rand_n = float(random.random())
     if activation_prob > rand_n:
@@ -63,24 +71,27 @@ def conversation_time(agent, other):
 # Linguistic alignment
 def linguistic_alignment(agent, other):
     # calculate social synchronisation score based on pitch scores
-    social_sync = ((0.1 * (1 - agent.iqr)) + 
-                    (0.1 * (1 - agent.mad)) +
-                    (0.1 * agent.speechrate) +
-                    (0.1 * (1 - agent.pause)))
-
-    agent.social_sync += social_sync
+    iqr_sync = 0.7 * (1 - agent.iqr)
+    mad_sync = 0.7 * (1 - agent.mad)
+    speechrate_sync = 0.7 * agent.speechrate
+    pause_sync = 0.7 * (1 - agent.pause)
 
     # calculate the difference between agents
-    iqr_diff = agent.iqr - other.iqr
-    mad_diff = agent.mad - other.mad
-    speechrate_diff = agent.speechrate - other.speechrate
-    pause_diff = agent.pause - other.pause
+    iqr_diff = other.iqr - agent.iqr
+    mad_diff = other.mad - agent.mad
+    speechrate_diff = other.speechrate - agent.speechrate
+    pause_diff = other.pause - agent.pause
 
     # modulate based on second degree polynomium
-    agent.change_iqr += (social_sync * (-1 * (math.pow(iqr_diff, 2) + 1))) * iqr_diff
-    agent.change_mad += (social_sync * (-1 * (math.pow(mad_diff, 2) + 1))) * mad_diff
-    agent.change_speechrate += (social_sync * (-1 * (math.pow(speechrate_diff, 2) + 1))) * speechrate_diff
-    agent.change_pause += (social_sync * (-1 * (math.pow(pause_diff, 2) + 1))) * pause_diff
+    agent.change_iqr += (iqr_sync * (-1 * (iqr_diff * iqr_diff) + 1)) * iqr_diff
+    agent.change_mad += (mad_sync * (-1 * (mad_diff * mad_diff) + 1)) * mad_diff
+    agent.change_speechrate += (speechrate_sync * (-1 * (speechrate_diff * speechrate_diff) + 1)) * speechrate_diff
+    agent.change_pause += (pause_sync * (-1 * (pause_diff * pause_diff) + 1)) * pause_diff
 
+    # calculate absolute change
+    agent.abs_change_iqr += np.absolute((iqr_sync * (-1 * (iqr_diff * iqr_diff) + 1)) * iqr_diff)
+    agent.abs_change_mad += np.absolute((mad_sync * (-1 * (mad_diff * mad_diff) + 1)) * mad_diff)
+    agent.abs_change_speechrate += np.absolute((speechrate_sync * (-1 * (speechrate_diff * speechrate_diff) + 1)) * speechrate_diff)
+    agent.abs_change_pause += np.absolute((pause_sync * (-1 * (pause_diff * pause_diff) + 1)) * pause_diff)
 
 

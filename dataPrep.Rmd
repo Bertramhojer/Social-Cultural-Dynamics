@@ -10,7 +10,7 @@ editor_options:
 ```{r}
 library(pacman)
 p_load(tidyverse, lmerTest)
-
+setwd("/Users/bertram/Desktop/folders/Uni/4th/SocCult-Exam/ABM/Social-Cultural-Dynamics")
 data <- read_csv("Ass4_data.csv", col_types = cols(ID = col_character()))
 
 data$npause[data$npause == 0] <- NA
@@ -48,6 +48,8 @@ d_TD <- d_grouped %>% slice(43:67)
 d_TEST <- d_grouped %>% slice(26:42)
 new_d <- rbind(d_ASD, d_TD)
 write_csv(new_d, "pitchScores.csv")
+write_csv(d_TEST, "testScores.csv")
+write_csv(d_grouped, "participantScores.csv")
 
 ```
 
@@ -112,5 +114,97 @@ summary(batch_model)
 
 
 ```
+
+
+# dataprep for classifier - Original data
+```{r}
+d$label <- ifelse(d$Diagnosis == "ASD", 0, 1)
+
+d_classify <- d %>% 
+  select(ID, pitchVariability, pitchMAD, pauseFreq, speechRate, label)
+d_train <- d_classify[c(1:251,511:762),]
+d_train <- d_train %>% select(-ID)
+
+write_csv(d_train, "classify_train.csv")
+
+d_test <- d[c(252:510),]
+d_test <- d_test %>% select(-ID, -Diagnosis)
+write_csv(d_test, "classify_test.csv")
+```
+
+
+# dataprep for classifier - Simulated data
+```{r}
+d_sim <- read_csv("batch_data.csv")
+
+d_sim$Diagnosis <- as.numeric(d_sim$AgentId)
+d_sim$Diagnosis <- ifelse(d_sim$Diagnosis < 25, "ASD", "TD")
+d_sim$label <- ifelse(d_sim$Diagnosis == "ASD", 0, 1)
+
+d_sim <- d_sim %>% select(-X1, -Run, -AgentId, -width, -height, -Diagnosis, -N)
+
+write_csv(d_sim, "sim_train.csv")
+```
+
+
+Test Batch Data
+```{r}
+sim_test <- read_csv("sim_test.csv")
+
+sim_test$Step <- as.numeric(sim_test$Step)
+sim_test$AgentID <- as.numeric(sim_test$AgentID)
+
+sim_d <- sim_test %>% 
+  filter(Step == 199) %>% 
+  filter(AgentID == 50) %>% 
+  map_df(rev)
+
+sim_d <- sim_d %>% 
+  group_by(IQR) %>% 
+  summarize(activity = mean(activity), change_IQR = mean(change_IQR), change_MAD = mean(change_MAD), change_PauseFreq = mean(change_PauseFreq), change_Speechrate = mean(change_Speechrate), conversation_time = mean(conversation_time), interaction_time = mean(interaction_time), interactions = mean(interactions), mad = mean(mad), pauseFreq = mean(pauseFreq), social_sync = mean(social_sync), speechrate = mean(speechrate))
+
+sim_d$Diagnosis <- c('TD','TD','TD','TD','TD','ASD','TD','TD','TD','TD','TD','TD','TD','TD', 'ASD','ASD','ASD')
+
+sim_d$label <- ifelse(sim_d$Diagnosis == "ASD", 0, 1)
+
+sim_d <- sim_d %>% 
+  select( -Diagnosis) %>% 
+  select(IQR, activity, change_IQR, change_MAD, change_PauseFreq, change_Speechrate, conversation_time,
+         interaction_time, interactions, mad, pauseFreq, social_sync, speechrate, label)
+
+write_csv(sim_d, "sim_test_data.csv")
+```
+
+
+
+
+Data prep 200 steps - 10 iterations
+```{r}
+d_sim200 <- read_csv("batch_data_10_200.csv")
+
+d_sim200$Diagnosis <- as.numeric(d_sim200$AgentId)
+d_sim200$Diagnosis <- ifelse(d_sim200$Diagnosis < 25, "ASD", "TD")
+d_sim200$label <- ifelse(d_sim200$Diagnosis == "ASD", 0, 1)
+
+
+d_sim200 %>% group_by(Diagnosis) %>% summarize(
+  activity = mean(activity),
+  conversation_time = mean(conversation_time),
+  interactions = mean(interactions),
+  interaction_time = mean(interaction_time),
+  change_IQR = mean(change_IQR),
+  change_MAD = mean(change_MAD)
+)
+
+d_10_200 <- d_sim200 %>% 
+  group_by(AgentId) %>% 
+  summarize(activity = mean(activity), change_IQR = mean(change_IQR), change_MAD = mean(change_MAD), change_PauseFreq = mean(change_PauseFreq), change_Speechrate = mean(change_Speechrate), conversation_time = mean(conversation_time), interaction_time = mean(interaction_time), interactions = mean(interactions), mad = mean(mad), pauseFreq = mean(pauseFreq), speechrate = mean(speechrate), abs_IQR = mean(abs_change_IQR), abs_MAD = mean(abs_change_MAD), Diagnosis = Diagnosis[1])
+
+
+d_sim200 <- d_sim200 %>% select(-X1, -Run, -AgentId, -width, -height, -Diagnosis, -N)
+
+write_csv(d_sim200, "sim_train.csv")
+```
+
 
 
