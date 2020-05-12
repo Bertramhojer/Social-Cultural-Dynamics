@@ -1,0 +1,205 @@
+---
+title: "Logistic regression"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+# Load packages
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load(pacman, tidyverse, tidymodels, groupdata2, lmerTest, lme4, kernlab, ggplot2, dplyr, caret)
+
+setwd("/Users/bertram/Desktop/folders/Uni/4th/SocCult-Exam/ABM/Social-Cultural-Dynamics")
+```
+
+
+# Data management - Original & Simulated Data
+```{r}
+
+# LOAD ORIGINAL DATA - SCALED
+original_data <- read_csv("grouped_scaled.csv")
+
+original_data$diagnosis <- as.factor(original_data$Diagnosis)
+
+original_bv <- original_data %>% select(ID, diagnosis, Pitch_IQR, Pitch_MAD, pauseFreq, speechrate)
+
+
+
+# LOAD SIMULATED DATA
+
+sim_data <- read_csv("batch_1000_1000.csv")
+
+grouped_sim_data <- sim_data %>% 
+  group_by(AgentId) %>% 
+  summarise(activity = mean(activity), change_IQR = mean(change_IQR),
+            change_MAD = mean(change_MAD), change_PauseFreq = mean(change_PauseFreq),
+            change_Speechrate = mean(change_Speechrate), conversation_time = mean(conversation_time),
+            interaction_time = mean(interaction_time), interactions = mean(interactions),
+            mad = mean(mad), pauseFreq = mean(pauseFreq), speechrate = mean(speechrate), 
+            abs_IQR = mean(abs_change_IQR), abs_MAD = mean(abs_change_MAD), IQR = mean(IQR),
+            speechrate = mean(speechrate), mad = mean(mad), pauseFreq = mean(pauseFreq),
+            diagnosis = diagnosis[1])
+
+colnames(grouped_sim_data)[1] <- "ID"
+
+grouped_sim_data$diagnosis <- as.factor(grouped_sim_data$diagnosis)
+levels(grouped_sim_data$diagnosis) <- c('0', '1')
+```
+
+
+# Check predictor significance
+```{r Linear Modeling}
+bv_sim_coefficients <- data_frame()
+
+for (i in colnames(grouped_sim_data)[2:15]){
+  summary <- summary(lm(paste(i,  "~ 1 + diagnosis"), data = grouped_sim_data, na.rm=T))
+  coef <- summary$coefficients
+  rownames(coef)[1] <- paste(i, "Intercept")
+  rownames(coef)[2] <- paste(i, "Slope")
+  
+  if (coef[2,4] < 0.05){
+    bv_sim_coefficients <- rbind(bv_sim_coefficients, coef)
+  }
+}
+
+
+overall_bv <- grouped_sim_data %>% 
+  select(ID, diagnosis, change_IQR, change_MAD, interaction_time, interactions, abs_IQR, abs_MAD, mad, IQR, speechrate)
+
+sim_bv <- grouped_sim_data %>% 
+  select(ID, diagnosis, change_IQR, change_MAD, interaction_time, interactions, abs_IQR, abs_MAD)
+
+```
+
+
+# Defining functions for classification & cross-validation
+```{r Classifier-function}
+
+# r...$overall - contains accuracy scores
+# r...$byClass - contains sensitivity and specificity scores
+
+# CLASSIFICATION
+
+ClassifyLogistic <- function(data, test_proportion){
+  
+  # partition the data
+  partition_list <- partition(data, p = test_proportion, cat_col = c("diagnosis"), list_out = T)
+  
+  # specify training set and test set
+  test_data <- partition_list[[1]]
+  test_data <- test_data %>% select(-ID)
+  training_data <- partition_list[[2]]
+  training_data <- training_data %>% select(-ID)
+  
+  # specify recipe / formula for the model
+  recipe <- training_data %>%
+    recipe(diagnosis ~ .) %>% 
+    step_corr(all_numeric()) %>% 
+    prep(training = training_data)
+  
+  # extract the training data from the recipe
+  training_baked <- juice(recipe)
+  # apply recipe to test data
+  test_baked <- recipe %>% bake(test_data)
+  
+  # specify the model - a logistic classifier
+  model <- logistic_reg() %>% 
+    set_mode("classification") %>% 
+    set_engine("glm") %>% 
+    fit(diagnosis ~ ., data = training_baked)
+  
+  # fit model to test data
+  results <- test_baked %>% 
+    select(diagnosis) %>% 
+    mutate(log_class = predict(model, new_data = test_baked) %>% 
+             pull(.pred_class),
+           log_prob  = predict(model, new_data = test_baked, type = "prob") %>% 
+             pull(.pred_1))
+  
+  # extracting metrics of log_class
+  results <- results %>%
+    select(diagnosis, log_class, log_prob) %>% 
+    mutate(log_prob = log_prob-0.5,
+           diagnosis = as.numeric(diagnosis)-1,
+           log_class = as.numeric(log_class)-1) 
+  
+  results$log_class <- as.factor(results$log_class)
+  results$diagnosis <- as.factor(results$diagnosis)
+  
+  return(results)
+  
+}
+
+
+# CROSS VALIDATION
+
+CrossValidation <- function(data, partition, iterations){
+  
+  iterations <- as.numeric(iterations)
+  
+  for (i in 1:iterations){
+    
+    # run a logistic regression using the ClassifyLogistic function
+    log_model <- ClassifyLogistic(data, partition)
+    # get metrics
+    metrics <- caret::confusionMatrix(log_model$log_class, log_model$diagnosis, positive="0")
+    
+    # create a list of important metrics
+    run <- data.frame(
+      accuracy = metrics$overall[1],
+      sensitivity = metrics$byClass[1],
+      specificity = metrics$byClass[2],
+      kappa = metrics$overall[2],
+      run = i)
+    
+    
+    # initiate empty dataframe if it's the first run
+    if (i == 1){
+      
+      x <- data.frame(
+        accuracy = integer(),
+        sensitivity = integer(),
+        specificity = integer(),
+        kappa = integer(),
+        run = integer())
+      
+    }
+    
+    # append the new run to the dataframe
+    x <- rbind(x, run)
+  
+  }
+  
+  return(x)
+  
+}
+
+
+```
+
+
+# Run Classification & Cross Validation
+```{r}
+
+# Cross validation for original data
+originial_acc <- CrossValidation(original_bv, 0.25, 100)
+mean(original_acc$accuracy)
+
+# Cross-validation for simulated data
+sim_acc <- CrossValidation(sim_bv, 0.25, 100)
+mean(sim_acc$accuracy)
+
+# Cross validation for overall data
+overall_acc <- CrossValidation(overall_bv, 0.25, 100)
+mean(overall_acc$accuracy)
+
+
+# Create tibble with mean accuracy scores
+accuracy_scores = tibble(data = c("Original", "Simulation", "Overall"),
+                  accuracy = c(mean(original_acc$accuracy), mean(sim_acc$accuracy), mean(overall_acc$accuracy)))
+print(accuracy_scores)
+```
+
+
