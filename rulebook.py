@@ -71,10 +71,10 @@ def conversation_time(agent, other):
 # Linguistic alignment
 def linguistic_alignment(agent, other):
     # calculate social synchronisation score based on pitch scores
-    iqr_sync = 0.7 * (1 - agent.iqr)
-    mad_sync = 0.7 * (1 - agent.mad)
-    speechrate_sync = 0.7 * agent.speechrate
-    pause_sync = 0.7 * (1 - agent.pause)
+    iqr_sync = 0.75 * (1 - agent.iqr)
+    mad_sync = 0.75 * (1 - agent.mad)
+    speechrate_sync = 0.75 * agent.speechrate
+    pause_sync = 0.75 * (1 - agent.pause)
 
     # calculate the difference between agents
     iqr_diff = other.iqr - agent.iqr

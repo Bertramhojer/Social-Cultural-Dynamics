@@ -9,7 +9,7 @@ fixed_params = {"width": 16,
 batch_run = BatchRunner(Model,
 						fixed_parameters = fixed_params,
 						iterations = 1000,
-						max_steps = 1000,
+						max_steps = 2000,
 						agent_reporters = {"interactions": "unique_interactions",
 									"interaction_time": "interaction_time",
 									"conversation_time": "conversation_time",
@@ -33,4 +33,4 @@ batch_run = BatchRunner(Model,
 batch_run.run_all()
 
 batch_data = batch_run.get_agent_vars_dataframe()
-batch_data.to_csv("batch_1000_1000.csv")
+batch_data.to_csv("batch_1000_2000.csv")

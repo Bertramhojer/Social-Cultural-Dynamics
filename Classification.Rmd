@@ -19,17 +19,17 @@ setwd("/Users/bertram/Desktop/folders/Uni/4th/SocCult-Exam/ABM/Social-Cultural-D
 ```{r}
 
 # LOAD ORIGINAL DATA - SCALED
-original_data <- read_csv("grouped_scaled.csv")
+original_data <- read_csv("grouped_scaled_01.csv")
 
 original_data$diagnosis <- as.factor(original_data$Diagnosis)
 
-original_bv <- original_data %>% select(ID, diagnosis, Pitch_IQR, Pitch_MAD, pauseFreq, speechrate)
+original_bv <- original_data %>% select(ID, diagnosis, Pitch_MAD)
 
 
 
 # LOAD SIMULATED DATA
 
-sim_data <- read_csv("batch_1000_1000.csv")
+sim_data <- read_csv("batch_1000_1000_new.csv")
 
 grouped_sim_data <- sim_data %>% 
   group_by(AgentId) %>% 
@@ -46,6 +46,16 @@ colnames(grouped_sim_data)[1] <- "ID"
 
 grouped_sim_data$diagnosis <- as.factor(grouped_sim_data$diagnosis)
 levels(grouped_sim_data$diagnosis) <- c('0', '1')
+
+# Scaling data
+grouped_sim_data <- grouped_sim_data %>% 
+  mutate(activity = scale(activity), change_IQR = scale(change_IQR), change_MAD = scale(change_MAD),
+         change_PauseFreq = scale(change_PauseFreq), change_Speechrate = scale(change_Speechrate),
+         conversation_time = scale(conversation_time), interaction_time = scale(interaction_time),
+         interactions = scale(interactions), abs_IQR = scale(abs_IQR), abs_MAD = scale(abs_MAD))
+
+summary(grouped_sim_data)
+
 ```
 
 
@@ -54,22 +64,22 @@ levels(grouped_sim_data$diagnosis) <- c('0', '1')
 bv_sim_coefficients <- data_frame()
 
 for (i in colnames(grouped_sim_data)[2:15]){
-  summary <- summary(lm(paste(i,  "~ 1 + diagnosis"), data = grouped_sim_data, na.rm=T))
+  summary <- summary(lm(paste(i,  "~ 1 + diagnosis"), data = grouped_sim_data))
   coef <- summary$coefficients
   rownames(coef)[1] <- paste(i, "Intercept")
   rownames(coef)[2] <- paste(i, "Slope")
   
-  if (coef[2,4] < 0.05){
+  if (coef[2,4] < 0.01){
     bv_sim_coefficients <- rbind(bv_sim_coefficients, coef)
   }
 }
 
 
 overall_bv <- grouped_sim_data %>% 
-  select(ID, diagnosis, change_IQR, change_MAD, interaction_time, interactions, abs_IQR, abs_MAD, mad, IQR, speechrate)
+  select(ID, diagnosis, change_MAD, interaction_time, abs_MAD, mad)
 
 sim_bv <- grouped_sim_data %>% 
-  select(ID, diagnosis, change_IQR, change_MAD, interaction_time, interactions, abs_IQR, abs_MAD)
+  select(ID, diagnosis, abs_MAD, change_MAD, interaction_time)
 
 ```
 
@@ -184,21 +194,22 @@ CrossValidation <- function(data, partition, iterations){
 ```{r}
 
 # Cross validation for original data
-originial_acc <- CrossValidation(original_bv, 0.25, 100)
-mean(original_acc$accuracy)
+original_acc <- CrossValidation(original_bv, 0.21, 2000)
 
 # Cross-validation for simulated data
-sim_acc <- CrossValidation(sim_bv, 0.25, 100)
-mean(sim_acc$accuracy)
+sim_acc <- CrossValidation(sim_bv, 0.21, 2000)
 
 # Cross validation for overall data
-overall_acc <- CrossValidation(overall_bv, 0.25, 100)
-mean(overall_acc$accuracy)
+overall_acc <- CrossValidation(overall_bv, 0.21, 2000)
 
 
 # Create tibble with mean accuracy scores
-accuracy_scores = tibble(data = c("Original", "Simulation", "Overall"),
-                  accuracy = c(mean(original_acc$accuracy), mean(sim_acc$accuracy), mean(overall_acc$accuracy)))
+accuracy_scores = tibble(
+                    data = c("Original", "Simulation", "Overall"),
+                    accuracy = c(mean(original_acc$accuracy), mean(sim_acc$accuracy), mean(overall_acc$accuracy)),
+                    SD = c(sd(original_acc$accuracy), sd(sim_acc$accuracy), sd((overall_acc$accuracy)))
+)
+
 print(accuracy_scores)
 ```
 
