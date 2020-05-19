@@ -1,0 +1,638 @@
+---
+title: "Assignment 5"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(pacman)
+p_load(tidyverse, brms)
+```
+
+
+# Data Preparation
+```{r Loading the data}
+# Loading in the original data
+original_data <- read_csv("grouped_scaled_01.csv")
+
+original_data$diagnosis <- as.factor(original_data$Diagnosis)
+
+original_bv <- original_data %>% select(ID, diagnosis, Pitch_IQR, Pitch_MAD, pauseFreq, speechrate)
+
+
+# Loading in simulated data and grouping it together
+sim_data <- read_csv("batch_1000_1000_new.csv")
+
+grouped_sim_data <- sim_data %>% 
+  group_by(AgentId) %>% 
+  summarise(activity = mean(activity), change_IQR = mean(change_IQR),
+            change_MAD = mean(change_MAD), change_PauseFreq = mean(change_PauseFreq),
+            change_Speechrate = mean(change_Speechrate), conversation_time = mean(conversation_time),
+            interaction_time = mean(interaction_time), interactions = mean(interactions),
+            mad = mean(mad), pauseFreq = mean(pauseFreq), speechrate = mean(speechrate), 
+            abs_IQR = mean(abs_change_IQR), abs_MAD = mean(abs_change_MAD), IQR = mean(IQR),
+            speechrate = mean(speechrate), mad = mean(mad), pauseFreq = mean(pauseFreq),
+            diagnosis = diagnosis[1])
+
+
+# Add ID column
+colnames(grouped_sim_data)[1] <- "ID"
+
+
+# set diagnosis as factor with levels 0 and 1
+grouped_sim_data$diagnosis <- as.factor(grouped_sim_data$diagnosis)
+levels(grouped_sim_data$diagnosis) <- c('0', '1')
+
+
+# Scaling simulation data between 0 - 1
+grouped_sim_data <- grouped_sim_data %>% 
+  mutate(activity = scale(activity), change_IQR = scale(change_IQR), change_MAD = scale(change_MAD),
+         change_PauseFreq = scale(change_PauseFreq), change_Speechrate = scale(change_Speechrate),
+         conversation_time = scale(conversation_time), interaction_time = scale(interaction_time),
+         interactions = scale(interactions), abs_IQR = scale(abs_IQR), abs_MAD = scale(abs_MAD))
+
+```
+
+
+# Specifying Bayesian Formulas for Original Data
+```{r}
+IQR_f <- bf(Pitch_IQR ~ 1 + diagnosis)
+MAD_f <- bf(Pitch_MAD ~ 1 + diagnosis)
+pauseFreq_f <- bf(pauseFreq ~ 1 + diagnosis)
+speechrate_f <- bf(speechrate ~ 1 + diagnosis)
+
+get_prior(IQR_f, data = original_data)
+
+original_prior <- c(
+  prior(normal(0, 1), class = b),
+  prior(normal(0, 1), class = Intercept),
+  prior(normal(.1, .5), class = sigma)
+)
+```
+
+
+Modeling Original Variables
+```{r}
+# INTER-QUARTILE RANGE - AKA PITCH VARIABILITY
+orig_IQR_pc <- brm(
+  IQR_f,
+  data = original_data,
+  family = gaussian(),
+  prior = original_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(orig_IQR_pc, nsamples = 100)
+
+orig_IQR_m <- brm(
+  IQR_f,
+  data = original_data,
+  family = gaussian(),
+  prior = original_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(orig_IQR_m, nsamples = 100)
+
+summary(orig_IQR_m)
+hypothesis(orig_IQR_m, "diagnosis1 < 0")
+
+
+# MEAN ABSOLUTE STANDARD DEVIATION
+orig_MAD_pc <- brm(
+  MAD_f,
+  data = original_data,
+  family = gaussian(),
+  prior = original_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(orig_MAD_pc, nsamples = 100)
+
+orig_MAD_m <- brm(
+  MAD_f,
+  data = original_data,
+  family = gaussian(),
+  prior = original_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(orig_MAD_m, nsamples = 100)
+
+summary(orig_MAD_m)
+hypothesis(orig_MAD_m, "diagnosis1 < 0")
+
+
+# PAUSE FREQUENCY
+orig_pause_pc <- brm(
+  pauseFreq_f,
+  data = original_data,
+  family = gaussian(),
+  prior = original_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(orig_pause_pc, nsamples = 100)
+
+orig_pause_m <- brm(
+  pauseFreq_f,
+  data = original_data,
+  family = gaussian(),
+  prior = original_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(orig_pause_m, nsamples = 100)
+
+summary(orig_pause_m)
+hypothesis(orig_pause_m, "diagnosis1 < 0")
+
+
+# SPEECHRATE
+orig_speechrate_pc <- brm(
+  speechrate_f,
+  data = original_data,
+  family = gaussian(),
+  prior = original_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(orig_speechrate_pc, nsamples = 100)
+
+orig_speechrate_m <- brm(
+  speechrate_f,
+  data = original_data,
+  family = gaussian(),
+  prior = original_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(orig_speechrate_m, nsamples = 100)
+
+summary(orig_speechrate_m)
+hypothesis(orig_speechrate_m, "diagnosis1 > 0")
+```
+
+The model yields a credible relation between pitch IQR and diagnosis, with TD's showing lower iqr (b = -0.1, CIs = -0.18, -0.02, Evid. Ratio = 34.09).
+The model yields a credible relation between mean absolute standard deviation and diagnosis, with TD's showing a lower MAD (b = -0.13, CIs = -0.21, -0.05, Evid. Ratio = 199).
+The model yields a credible relation between pause frequency and diagnosis with TD's showing a lower overall pause frequency (b = -0.09, CIs = -0.18, -0.01, Evid. Ratio = 25.32).
+The model yields a credible relation between speechrate and diagnosis with TD's showing a higher speechrate (b = 0.09, CIs = 0.01, 0.18, Evid. Ratio = 23.69).
+
+
+
+# Specifing Bayesian Formulas for Simulated Data
+```{r Simple Bayesian analyses}
+# Defining model formulas
+changeIQR_f <- bf(change_IQR ~ 1 + diagnosis)
+changeMAD_f <- bf(change_MAD ~ 1 + diagnosis)
+changePauseFreq_f <- bf(change_PauseFreq ~ 1 + diagnosis)
+changeSpeechrate_f <- bf(change_Speechrate ~ 1 + diagnosis)
+absIQR_f <- bf(abs_IQR ~ 1 + diagnosis)
+absMAD_f <- bf(abs_MAD ~ 1 + diagnosis)
+activity_f <- bf(activity ~ 1 + diagnosis)
+interactions_f <- bf(interactions ~ 1 + diagnosis)
+interactiontime_f <- bf(interaction_time ~ 1 + diagnosis)
+conversationtime_f <- bf(conversation_time ~ 1 + diagnosis)
+
+
+# Getting necessary priors (identical for all models)
+get_prior(changeIQR_f, data = grouped_sim_data)
+
+
+# Setting skeptical priors
+sim_prior <- c(
+  prior(normal(0, 1), class = b),
+  prior(normal(0, 1), class = Intercept),
+  prior(normal(.1, .5), class = sigma)
+)
+```
+
+
+Happy Modeling of Simulated Variables!
+```{r}
+## Change Pitch Variability
+# Prior predictive check
+IQR_pc <- brm(
+  changeIQR_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+
+pp_check(IQR_pc, nsamples = 100)
+
+# Fitting the model
+IQR_m <- brm(
+  changeIQR_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+
+pp_check(IQR_m, nsamples = 100)
+summary(IQR_m)
+hypothesis(IQR_m, "diagnosis1 > 0")
+
+
+
+## Change Mean Absolute Standard Deviation
+MAD_pc <- brm(
+  changeMAD_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(MAD_pc, nsamples = 100)
+
+MAD_m <- brm(
+  changeMAD_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(IQR_m, nsamples = 100)
+
+summary(MAD_m)
+hypothesis(MAD_m, "diagnosis1 > 0")
+
+
+
+## Change Pause Frequency
+PauseFreq_pc <- brm(
+  changePauseFreq_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(PauseFreq_pc, nsamples = 100)
+
+PauseFreq_m <- brm(
+  changePauseFreq_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(PauseFreq_m, nsamples = 100)
+
+summary(PauseFreq_m)
+hypothesis(PauseFreq_m, "diagnosis1 > 0")
+
+
+
+## Change Speech Rate
+speechrate_pc <- brm(
+  changeSpeechrate_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(speechrate_pc, nsamples = 100)
+
+speechrate_m <- brm(
+  changeSpeechrate_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(speechrate_m, nsamples = 100)
+
+summary(speechrate_m)
+hypothesis(speechrate_m, "diagnosis1 > 0")
+
+
+
+## Absolute IQR Score
+absIQR_pc <- brm(
+  absIQR_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(absIQR_pc, nsamples = 100)
+
+absIQR_m <- brm(
+  absIQR_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(absIQR_m, nsamples = 100)
+
+summary(absIQR_m)
+hypothesis(absIQR_m, "diagnosis1 > 0")
+
+
+
+## Absolute Mean Absolute Deviation Score
+absMAD_pc <- brm(
+  absMAD_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(absMAD_pc, nsamples = 100)
+
+absMAD_m <- brm(
+  absMAD_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(absMAD_m, nsamples = 100)
+
+summary(absMAD_m)
+hypothesis(absMAD_m, "diagnosis1 > 0")
+
+
+
+## Activitiy Score
+activity_pc <- brm(
+  activity_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(activity_pc, nsamples = 100)
+
+activity_m <- brm(
+  activity_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(activity_m, nsamples = 100)
+
+summary(activity_m)
+hypothesis(activity_m, "diagnosis1 > 0")
+
+
+
+## Overall Interactions
+interactions_pc <- brm(
+  interactions_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(interactions_pc, nsamples = 100)
+
+interactions_m <- brm(
+  interactions_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(interactions_m, nsamples = 100)
+
+summary(interactions_m)
+hypothesis(interactions_m, "diagnosis1 > 0")
+
+
+
+## Overall Interaction Time
+interactiontime_pc <- brm(
+  interactiontime_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(interactiontime_pc, nsamples = 100)
+
+interactiontime_m <- brm(
+  interactiontime_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(interactiontime_m, nsamples = 100)
+
+summary(interactiontime_m)
+hypothesis(interactiontime_m, "diagnosis1 > 0")
+
+
+
+## Overall Conversation Time
+conversationtime_pc <- brm(
+  conversationtime_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(conversationtime_pc, nsamples = 100)
+
+conversationtime_m <- brm(
+  conversationtime_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = sim_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(conversationtime_m, nsamples = 100)
+
+summary(conversationtime_m)
+hypothesis(conversationtime_m, "diagnosis1 > 0")
+```
+
+
+Hypothesis Testing
+```{r Hypotheses}
+hypothesis(IQR_m, "diagnosis1 > 0")
+hypothesis(MAD_m, "diagnosis1 > 0")
+summary(MAD_m)
+hypothesis(PauseFreq_m, "diagnosis1 > 0")
+hypothesis(speechrate_m, "diagnosis1 < 0")
+hypothesis(absIQR_m, "diagnosis1 > 0")
+plot(hypothesis(absMAD_m, "diagnosis1 > 0"))
+summary(absMAD_m)
+hypothesis(activity_m, "diagnosis1 > 0")
+hypothesis(interactions_m, "diagnosis1 > 0")
+hypothesis(interactiontime_m, "diagnosis1 > 0")
+hypothesis(conversationtime_m, "diagnosis1 > 0")
+```
+
+Diagnosis produced a credible effect on change in MAD score (b = 0.67, CIs = 0.29, 1.04, Evid. Ratio = Inf).
+Diagnosis produced a credible effect on absolute IQR score (b = 0.69, CIs = 0.33, 1.05, Evid. Ratio = 1999).
+Diagnosis produced a credible effect on amount of interactions (b = 0.69, CIs = 0.32, 1.05, Evid. Ratio = 666).
+Diagnosis produced a credible effect on overall interaction time (b = 0.71, CIs = 0.34, 1.06, Evid. Ratio = 399).
+
+
+Modeling Simulated Interaction Effects
+```{r Interactions}
+interaction1_f <- bf(abs_MAD ~ 0 + diagnosis:activity)
+interaction2_f <- bf(change_MAD ~ 0 + diagnosis:activity)
+interaction3_f <- bf(interactions ~ 0 + diagnosis:abs_MAD)
+interaction4_f <- bf(abs_MAD ~ 0 + diagnosis:interactions)
+
+get_prior(interaction1_f, data = grouped_sim_data)
+
+interaction_prior <- c(
+  prior(normal(0, 1), class = "b"),
+  prior(normal(.5, 1), class = "sigma")
+)
+
+
+interaction1_pc <- brm(
+  interaction1_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = interaction_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(interaction1_pc, nsamples = 100)
+
+interaction1_m <- brm(
+  interaction1_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = interaction_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(interaction1_m, nsamples = 100)
+
+summary(interaction1_m)
+hypothesis(interaction1_m, "diagnosis1:activity > diagnosis0:activity")
+
+
+
+
+interaction2_pc <- brm(
+  interaction2_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = interaction_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(interaction2_pc, nsamples = 100)
+
+interaction2_m <- brm(
+  interaction2_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = interaction_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(interaction2_m, nsamples = 100)
+
+summary(interaction2_m)
+hypothesis(interaction2_m, "diagnosis1:activity < diagnosis0:activity")
+
+
+interaction3_pc <- brm(
+  interaction3_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = interaction_prior,
+  sample_prior = "only",
+  chains = 2,
+  iter = 2000
+)
+pp_check(interaction3_pc, nsamples = 100)
+
+interaction3_m <- brm(
+  interaction3_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = interaction_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(interaction3_m, nsamples = 100)
+
+summary(interaction3_m)
+hypothesis(interaction3_m, "diagnosis1:abs_MAD > diagnosis0:abs_MAD")
+
+
+
+interaction4_m <- brm(
+  interaction4_f,
+  data = grouped_sim_data,
+  family = gaussian(),
+  prior = interaction_prior,
+  sample_prior = T,
+  chains = 2,
+  iter = 2000
+)
+pp_check(interaction4_m, nsamples = 100)
+
+summary(interaction4_m)
+summary(interaction4_m, "diagnosis1:interactions > diagnosis0:interactions")
+```
+
