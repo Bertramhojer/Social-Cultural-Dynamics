@@ -29,7 +29,7 @@ original_bv <- original_data %>% select(ID, diagnosis, Pitch_MAD)
 
 # LOAD SIMULATED DATA
 
-sim_data <- read_csv("batch_1000_1000_new.csv")
+sim_data <- read_csv("batch_100_1000.csv")
 
 grouped_sim_data <- sim_data %>% 
   group_by(AgentId) %>% 
@@ -75,11 +75,24 @@ for (i in colnames(grouped_sim_data)[2:15]){
 }
 
 
-overall_bv <- grouped_sim_data %>% 
-  select(ID, diagnosis, change_MAD, interaction_time, abs_MAD, mad)
 
-sim_bv <- grouped_sim_data %>% 
-  select(ID, diagnosis, abs_MAD, change_MAD, interaction_time)
+bv <- grouped_sim_data %>% 
+  select(ID, diagnosis, change_MAD, interactions, interaction_time, abs_MAD, activity, mad)
+bv$abs_MAD_activity <- bv$abs_MAD*bv$activity
+bv$abs_MAD_interactions <- bv$abs_MAD*bv$interactions
+bv$activity_change_MAD <- bv$change_MAD*bv$activity
+
+sim_int3 <- bv %>% 
+  select(ID, diagnosis, activity_change_MAD, abs_MAD_activity, abs_MAD_interactions, interaction_time)
+
+sim_int2 <- bv %>% 
+  select(ID, diagnosis, abs_MAD_activity, abs_MAD_interactions, interaction_time, change_MAD)
+
+sim_bv <- bv %>% 
+  select(ID, diagnosis, interaction_time, interactions, change_MAD, abs_MAD)
+
+overall_bv <- bv %>% 
+  select(ID, diagnosis, interaction_time, interactions, change_MAD, abs_MAD, mad)
 
 ```
 
@@ -194,22 +207,21 @@ CrossValidation <- function(data, partition, iterations){
 ```{r}
 
 # Cross validation for original data
-original_acc <- CrossValidation(original_bv, 0.21, 2000)
+original_acc <- CrossValidation(original_bv, 0.2, 200)
 
-# Cross-validation for simulated data
-sim_acc <- CrossValidation(sim_bv, 0.21, 2000)
+# Cross-validation for simulated data w. 3 int
+sim3_acc <- CrossValidation(sim_int3, 0.2, 200)
 
-# Cross validation for overall data
-overall_acc <- CrossValidation(overall_bv, 0.21, 2000)
+# Cross-validation for simulated data w. 2 int
+sim2_acc <- CrossValidation(sim_int2, 0.2, 20)
 
 
 # Create tibble with mean accuracy scores
-accuracy_scores = tibble(
-                    data = c("Original", "Simulation", "Overall"),
-                    accuracy = c(mean(original_acc$accuracy), mean(sim_acc$accuracy), mean(overall_acc$accuracy)),
-                    SD = c(sd(original_acc$accuracy), sd(sim_acc$accuracy), sd((overall_acc$accuracy)))
-)
-
+accuracy_scores = tibble(data = c("Original", "3 interactions", "2 interactions"),
+                  accuracy = c(mean(original_acc$accuracy), mean(sim3_acc$accuracy), mean(sim2_acc$accuracy)),
+                  SD = c(sd(original_acc$accuracy), sd(sim3_acc$accuracy), sd(sim2_acc$accuracy)),
+                  Sensitivity = c(mean(original_acc$sensitivity), mean(sim3_acc$sensitivity), mean(sim2_acc$sensitivity)),
+                  Specificity = c(mean(original_acc$specificity), mean(sim3_acc$specificity), mean(sim2_acc$specificity)))
 print(accuracy_scores)
 ```
 
