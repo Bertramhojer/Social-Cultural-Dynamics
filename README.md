@@ -1,7 +1,6 @@
 ## Social-Cultural-Dynamics
 
-# Model Visualisation
-![](visualisation.gif)
+![Model Visualisation](visualisation.gif)
 
 # Files
 Repository of python code for running ABM-simulation and analysing social interaction
