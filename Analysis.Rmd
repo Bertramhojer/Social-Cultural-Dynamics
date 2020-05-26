@@ -66,8 +66,8 @@ speechrate_f <- bf(speechrate ~ 1 + diagnosis)
 get_prior(IQR_f, data = original_data)
 
 original_prior <- c(
-  prior(normal(0, 1), class = b),
-  prior(normal(0, 1), class = Intercept),
+  prior(normal(0, .2), class = b),
+  prior(normal(.5, .1), class = Intercept),
   prior(normal(.1, .5), class = sigma)
 )
 ```
@@ -212,7 +212,7 @@ get_prior(changeIQR_f, data = grouped_sim_data)
 # Setting skeptical priors
 sim_prior <- c(
   prior(normal(0, 1), class = b),
-  prior(normal(0, 1), class = Intercept),
+  prior(normal(.5, .1), class = Intercept),
   prior(normal(.1, .5), class = sigma)
 )
 ```
