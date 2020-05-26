@@ -13,7 +13,61 @@ p_load(tidyverse, brms)
 
 
 # Data Preparation
-```{r Loading the data}
+```{r Loading and Scaling Data}
+# load the data
+d <- read_csv("Ass4_data.csv", col_types = cols(ID = col_character()))
+
+d$npause[d$npause == 0] <- NA
+d$`speechrate (nsyll/dur)`[d$`speechrate (nsyll/dur)` == 0.0] <- NA
+d$pauseFreq <- d$Duration / d$npause
+d$speechrate <-d$`speechrate (nsyll/dur)`
+
+# Selecting data
+d <- d %>% 
+  subset(Language == "dk") %>% 
+  select(ID, Diagnosis, Pitch_IQR, Pitch_Median, Pitch_MAD, Pitch_SD, Pitch_Mean, pauseFreq, speechrate)
+  
+# Making diagnosis a factor with levels 0 and 1
+d$Diagnosis <- as.factor(d$Diagnosis)
+levels(d$Diagnosis) <- c('0', '1')
+
+
+
+# Making a version where the data is scaled between 0-1 after being grouped
+# Grouping scaled data
+grouped_scaled_01 <- d %>% 
+  group_by(ID) %>% 
+  summarise(Pitch_IQR = mean(Pitch_IQR),
+            Pitch_Median = mean(Pitch_Median),
+            Pitch_Mean = mean(Pitch_Mean),
+            Pitch_MAD = mean(Pitch_MAD),
+            Pitch_SD = mean(Pitch_SD),
+            pauseFreq = mean(pauseFreq, na.rm = T),
+            speechrate = mean(speechrate, na.rm = T),
+            Diagnosis = Diagnosis[1])
+
+grouped_scaled_01 <- grouped_scaled_01 %>% 
+  mutate(Pitch_IQR = scale0_1(log(Pitch_IQR)),
+         Pitch_MAD = scale0_1(log(Pitch_MAD)),
+         Pitch_Median = scale0_1(Pitch_Median),
+         Pitch_Mean = scale0_1(Pitch_Mean),
+         Pitch_SD = scale0_1(Pitch_SD),
+         pauseFreq = scale0_1(log(pauseFreq), na.rm = T),
+         speechrate = scale0_1(speechrate, na.rm = T))%>%
+  select(ID, Diagnosis, Pitch_IQR, Pitch_MAD, Pitch_Median, Pitch_SD, Pitch_Mean, pauseFreq, speechrate)
+
+# Checking dist of data grouped by participants who have been scaled between 0-1
+histogram_plot(grouped_scaled_01, grouped_scaled_01$pauseFreq, 0.05, "Frequency", "Pause frequency")
+histogram_plot(grouped_scaled_01, grouped_scaled_01$Pitch_MAD, 0.05, "Frequency", "MAD")
+
+# Write csv with new dataset
+write_csv(grouped_scaled_01, "grouped_scaled_01.csv")
+```
+
+
+
+# Data Preparation
+```{r Maniupulating Data}
 # Loading in the original data
 original_data <- read_csv("grouped_scaled_01.csv")
 
