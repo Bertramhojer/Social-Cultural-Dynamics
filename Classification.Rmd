@@ -10,27 +10,23 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 pacman::p_load(pacman, tidyverse, tidymodels, groupdata2, lmerTest, lme4, kernlab, ggplot2, dplyr, caret)
-
-setwd("/Users/bertram/Desktop/folders/Uni/4th/SocCult-Exam/ABM/Social-Cultural-Dynamics")
 ```
 
 
 # Data management - Original & Simulated Data
 ```{r}
 
-# LOAD ORIGINAL DATA - SCALED
+# LOAD ORIGINAL DATA - SCALED AND GROUPED
 original_data <- read_csv("grouped_scaled_01.csv")
 
 original_data$diagnosis <- as.factor(original_data$Diagnosis)
 
 original_bv <- original_data %>% select(ID, diagnosis, Pitch_MAD)
 
-
-
 # LOAD SIMULATED DATA
+sim_data <- read_csv("batch_1000_1000.csv")
 
-sim_data <- read_csv("batch_100_1000.csv")
-
+# Grouping by particpantts
 grouped_sim_data <- sim_data %>% 
   group_by(AgentId) %>% 
   summarise(activity = mean(activity), change_IQR = mean(change_IQR),
@@ -38,12 +34,15 @@ grouped_sim_data <- sim_data %>%
             change_Speechrate = mean(change_Speechrate), conversation_time = mean(conversation_time),
             interaction_time = mean(interaction_time), interactions = mean(interactions),
             mad = mean(mad), pauseFreq = mean(pauseFreq), speechrate = mean(speechrate), 
-            abs_IQR = mean(abs_change_IQR), abs_MAD = mean(abs_change_MAD), IQR = mean(IQR),
-            speechrate = mean(speechrate), mad = mean(mad), pauseFreq = mean(pauseFreq),
-            diagnosis = diagnosis[1])
+            abs_IQR = mean(abs_change_IQR), abs_MAD = mean(abs_change_MAD),
+            abs_Speechrate = mean(abs_change_Speechrate), 
+            abs_PauseFreq = mean(change_PauseFreq), IQR = mean(IQR), speechrate = mean(speechrate), 
+            mad = mean(mad), pauseFreq = mean(pauseFreq),diagnosis = diagnosis[1])
 
+# Chaning ID collumn name
 colnames(grouped_sim_data)[1] <- "ID"
 
+# Refactoring diagnosis columms
 grouped_sim_data$diagnosis <- as.factor(grouped_sim_data$diagnosis)
 levels(grouped_sim_data$diagnosis) <- c('0', '1')
 
@@ -52,10 +51,10 @@ grouped_sim_data <- grouped_sim_data %>%
   mutate(activity = scale(activity), change_IQR = scale(change_IQR), change_MAD = scale(change_MAD),
          change_PauseFreq = scale(change_PauseFreq), change_Speechrate = scale(change_Speechrate),
          conversation_time = scale(conversation_time), interaction_time = scale(interaction_time),
-         interactions = scale(interactions), abs_IQR = scale(abs_IQR), abs_MAD = scale(abs_MAD))
+         interactions = scale(interactions), abs_IQR = scale(abs_IQR), abs_MAD = scale(abs_MAD), 
+         abs_PauseFreq = scale(abs_PauseFreq))
 
 summary(grouped_sim_data)
-
 ```
 
 
@@ -69,19 +68,20 @@ for (i in colnames(grouped_sim_data)[2:15]){
   rownames(coef)[1] <- paste(i, "Intercept")
   rownames(coef)[2] <- paste(i, "Slope")
   
-  if (coef[2,4] < 0.01){
+  if (coef[2,4] < 0.005){
     bv_sim_coefficients <- rbind(bv_sim_coefficients, coef)
   }
 }
 
 
-
+# Extrcing best variables and making interaction collumns
 bv <- grouped_sim_data %>% 
   select(ID, diagnosis, change_MAD, interactions, interaction_time, abs_MAD, activity, mad)
 bv$abs_MAD_activity <- bv$abs_MAD*bv$activity
 bv$abs_MAD_interactions <- bv$abs_MAD*bv$interactions
 bv$activity_change_MAD <- bv$change_MAD*bv$activity
 
+# Defining different variable-combinations for logistic regression
 sim_int3 <- bv %>% 
   select(ID, diagnosis, activity_change_MAD, abs_MAD_activity, abs_MAD_interactions, interaction_time)
 
@@ -89,33 +89,28 @@ sim_int2 <- bv %>%
   select(ID, diagnosis, abs_MAD_activity, abs_MAD_interactions, interaction_time, change_MAD)
 
 sim_bv <- bv %>% 
-  select(ID, diagnosis, interaction_time, interactions, change_MAD, abs_MAD)
+  select(ID, diagnosis, interaction_time, interactions, change_MAD, abs_MAD, activity)
 
 overall_bv <- bv %>% 
   select(ID, diagnosis, interaction_time, interactions, change_MAD, abs_MAD, mad)
-
 ```
 
 
 # Defining functions for classification & cross-validation
 ```{r Classifier-function}
 
-# r...$overall - contains accuracy scores
-# r...$byClass - contains sensitivity and specificity scores
-
-# CLASSIFICATION
+# CLASSIFICATION FUNCTION
 
 ClassifyLogistic <- function(data, test_proportion){
   
   # partition the data
-  partition_list <- partition(data, p = test_proportion, cat_col = c("diagnosis"), list_out = T)
+  partition_list <- partition(data, p = 0.2, cat_col = c("diagnosis"), list_out = T)
   
   # specify training set and test set
   test_data <- partition_list[[1]]
   test_data <- test_data %>% select(-ID)
   training_data <- partition_list[[2]]
   training_data <- training_data %>% select(-ID)
-  
   # specify recipe / formula for the model
   recipe <- training_data %>%
     recipe(diagnosis ~ .) %>% 
@@ -131,7 +126,7 @@ ClassifyLogistic <- function(data, test_proportion){
   model <- logistic_reg() %>% 
     set_mode("classification") %>% 
     set_engine("glm") %>% 
-    fit(diagnosis ~ ., data = training_baked)
+    fit(diagnosis ~., data = training_baked)
   
   # fit model to test data
   results <- test_baked %>% 
@@ -156,7 +151,7 @@ ClassifyLogistic <- function(data, test_proportion){
 }
 
 
-# CROSS VALIDATION
+# CROSS VALIDATION FUNCTION
 
 CrossValidation <- function(data, partition, iterations){
   
@@ -199,30 +194,164 @@ CrossValidation <- function(data, partition, iterations){
   
 }
 
-
 ```
 
 
 # Run Classification & Cross Validation
 ```{r}
-
-# Cross validation for original data
+# Cross validation for original data modle 
 original_acc <- CrossValidation(original_bv, 0.2, 200)
 
-# Cross-validation for simulated data w. 3 int
-sim3_acc <- CrossValidation(sim_int3, 0.2, 200)
-
-# Cross-validation for simulated data w. 2 int
-sim2_acc <- CrossValidation(sim_int2, 0.2, 20)
+# Cross-validation for simulated data w. 2 interacitons
+sim2_acc <- CrossValidation(sim_int2, 0.2, 200)
+mean(sim2_acc$accuracy)
 
 
 # Create tibble with mean accuracy scores
-accuracy_scores = tibble(data = c("Original", "3 interactions", "2 interactions"),
-                  accuracy = c(mean(original_acc$accuracy), mean(sim3_acc$accuracy), mean(sim2_acc$accuracy)),
-                  SD = c(sd(original_acc$accuracy), sd(sim3_acc$accuracy), sd(sim2_acc$accuracy)),
-                  Sensitivity = c(mean(original_acc$sensitivity), mean(sim3_acc$sensitivity), mean(sim2_acc$sensitivity)),
-                  Specificity = c(mean(original_acc$specificity), mean(sim3_acc$specificity), mean(sim2_acc$specificity)))
+accuracy_scores = tibble(data = c("Original data model", "Simulated data model"),
+                  accuracy = c(mean(original_acc$accuracy), mean(sim2_acc$accuracy)),
+                  SD = c(sd(original_acc$accuracy), sd(sim2_acc$accuracy)),
+                  Sensitivity = c(mean(original_acc$sensitivity),mean(sim2_acc$sensitivity)),
+                  Specificity = c(mean(original_acc$specificity),  mean(sim2_acc$specificity)))
 print(accuracy_scores)
+
+# Final run 
+final <- accuracy_scores
+final_accuracy <- rbind(sim2_acc, original_acc)
+final_accuracy$model <- 0
+final_accuracy$model[0:200] <- "Simulated data model"
+final_accuracy$model[201:400] <- "Original data model"
+final_accuracy$model <- as.factor(final_accuracy$model)
+mean(final_accuracy$accuracy[0:200])
+
+# Plotting accuracies with uncertainties
+ggplot(final_accuracy, aes(x = model, y=accuracy, group = model, fill = model))+
+  geom_violin(alpha = 0.5)+
+  stat_summary(fun.y=mean, geom="line", aes(group=1), size = 1, alpha = 0.3)+
+  stat_summary(fun.y=mean, geom="point", size = 2.5,alpha = 0.3)+
+  geom_boxplot(width=0.2, alpha = 0.5)+ 
+  scale_fill_manual(values=c("#A5262E","#55438E", "black"))+
+  theme_classic()+
+  theme(legend.position = "none") +
+  labs(title = "Model performances", 
+       x = "Model",
+       y = "Accuracy")
 ```
 
+# Investigating interaction effects
+```{r}
+# Investigating interactions
+# Investigating interactions
+# pitch MAD * speechrate in original data
+summary(lm(Pitch_MAD ~ 1 + diagnosis*speechrate, data = original_data))
+
+# Visualising interaction effects
+ggplot(grouped_scaled_01, aes(x = Pitch_MAD, y=speechrate, group = Diagnosis, color=Diagnosis))+
+  geom_point(aes(colour = Diagnosis))+  
+  geom_smooth(method = "lm", aes(colour = Diagnosis))+
+  scale_color_manual(values=c("#A5262E","#25378E"))+
+  theme_classic()+
+  xlab("MAD") +
+  ylab("Speechrate")+
+  labs(title="Interaction between MAD and speechrate")
+
+
+# Interactions * abs_MAD
+summary(lm(interactions  ~ 1 + diagnosis*abs_MAD, data = grouped_sim_data))
+# For better interpretabillity
+summary(lm(interactions  ~ 0 + diagnosis:abs_MAD, data = grouped_sim_data))
+
+# Visualising interaction effects
+ggplot(grouped_sim_data, aes(abs_MAD, interactions, group = diagnosis, color=diagnosis))+
+  geom_point(aes(colour = diagnosis))+  
+  geom_smooth(method = "lm", aes(colour = diagnosis))+
+  scale_color_manual(values=c("#A5262E","#25378E"))+
+  theme_classic()+
+  xlab("Abs MAD") +
+  ylab("Interations")+
+  labs(title="Interaction between MAD and interactions")
+
+
+# Interactions * activity
+summary(lm(abs_MAD  ~ 1 + diagnosis*activity, data = grouped_sim_data))
+# For better interpretabillity
+summary(lm(abs_MAD  ~ 0 + diagnosis:activity, data = grouped_sim_data))
+
+# Visualising interaction effects
+ggplot(grouped_sim_data, aes(activity, abs_MAD, group = diagnosis, color=diagnosis))+
+  geom_point(aes(colour = diagnosis))+  
+  geom_smooth(method = "lm", aes(colour = diagnosis))+
+  scale_color_manual(values=c("#A5262E","#25378E"),
+                      name="Diagnosis",
+                       labels=c("ASD", "TD"))+
+  theme_classic()+
+  xlab("Activity") +
+  ylab("Abs MAD")+
+  labs(title="Interaction between MAD and Activity")
+
+
+# activity * change mad
+summary(lm(change_MAD  ~ 1 + diagnosis*activity, data = grouped_sim_data))
+# For better interpretabillity
+summary(lm(change_MAD  ~ 0 + diagnosis:activity, data = grouped_sim_data))
+
+# Visualising interaction effects
+ggplot(grouped_sim_data, aes(activity, change_MAD, group = diagnosis, color=diagnosis))+
+  geom_point(aes(colour = diagnosis))+  
+  geom_smooth(method = "lm", aes(colour = diagnosis))+
+  scale_color_manual(values=c("#A5262E","#25378E"))+
+  theme_classic()+
+  xlab("Activity") +
+  ylab("Change MAD")+
+  labs(title="Interaction between MAD and Activity")
+```
+
+# Plotting ABM functions
+```{r}
+# Plotting activation prob for two hypothetical patients
+
+x <- seq(0,0.6,0.005)
+function1 <- 4*(0.44*x+0.03)*0.44+4*(0.4*x+0.03)*x
+function2 <- 4*(0.61*x+0.03)*0.61+4*(0.4*x+0.03)*x
+b <- seq(-1,1,0.005)
+function3 <- (0.75*(1-0.67))*(-1*b^2+1)*b
+function4 <- (0.75*(1-0.47))*(-1*b^2+1)*b
+
+plot(x, function1,
+main="Visualisation of activation function",
+ylab="Activation probability",
+xlab = "Difference in acoustic profiles",
+type="l",
+col="#25378E")
+lines(x,function2, col="#A5262E")
+legend("topleft",
+c("Agent 1 (TD)","Agent 2 (ASD)"),
+fill=c("#25378E","#A5262E"),
+)
+# Add text 
+text(0.22,0.21, "Prob. = 25%", col = "#25378E")
+text(0.114,0.41, "Prob. = 39%", col = "#A5262E")
+
+points(0.17, 0.2511, type = "p", col ="#25378E")
+points(0.17, 0.3929, type = "p", col ="#A5262E")
+
+#### ALIGNEMENT #####
+plot(b, function4,
+main="Visualisation of allignment function",
+ylab="Change of IQR",
+xlab = "Difference in IQR",
+type="l",
+col="#25378E")
+lines(b,function3, col="#A5262E")
+legend("topleft",
+c("Agent 1 (TD)","Agent 2 (ASD)"),
+fill=c("#25378E","#A5262E"),
+)
+# Add text 
+text(-0.02,0.08, "Change = 0.763", col = "#25378E")
+text(-0.42,-0.0425, "Change = -0.475", col = "#A5262E")
+
+points(0.2, 0.0763, type = "p", col ="#25378E")
+points(-0.2, -0.0475, type = "p", col ="#A5262E")
+```
 
