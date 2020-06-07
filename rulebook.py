@@ -31,10 +31,7 @@ def similarity_check(agent, other):
 
 
     # probability of moving
-    activation_prob = ((self_weight * agent.iqr + diff_weight * iqr_diff) + 
-                    (self_weight * agent.mad + diff_weight * mad_diff) +
-                    (self_weight * (1 - agent.speechrate) + diff_weight * speechrate_diff) +
-                    (self_weight * agent.pause + diff_weight * pause_diff))
+    activation_prob = 4 * self_weight * agent.symptom_severity + 4 * diff_weight * diff
 
     rand_n = float(random.random())
     if activation_prob > rand_n:
